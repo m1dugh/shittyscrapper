@@ -1,0 +1,24 @@
+{
+  "name": "shittyscrapper",
+  "version": "1.0.0",
+  "description": "a JS/TS scrapper",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/m1dugh/shittyscrapper.git"
+  },
+  "author": "m1dugh",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/m1dugh/shittyscrapper/issues"
+  },
+  "homepage": "https://github.com/m1dugh/shittyscrapper#readme",
+  "devDependencies": {
+    "@types/node": "^17.0.10",
+    "typescript": "^4.5.4"
+  }
+}
