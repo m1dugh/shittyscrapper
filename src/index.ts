@@ -1,5 +1,14 @@
-export interface SearchResult {
-    extractResult: () => any
+
+interface SearchResults {
+    /**
+     * an object containing attributes to check against as keys and string framers as values
+     */
+    attributesStringFramer: any;
+
+    /**
+     * the string framers for the element.innerText
+     */
+    text: ResultStringFramer[];
 }
 
 interface ResultStringFramer {
@@ -10,13 +19,53 @@ interface ResultStringFramer {
 
 export class SearchNode {
 
-    private searchResults?: SearchResult;
+    private searchResults?: SearchResults;
 
 
     constructor(public tag: string,
                 public parent?: SearchNode,
                 public children?: SearchNode[],
                 public attributes?: any) {
+    }
+
+   matchesElement(element: HTMLElement): boolean {
+        if(this.tag != element.tagName)
+            return false;
+
+
+        for(let [key, value] of this.attributes) {
+            if(element.attributes.getNamedItem(key)?.value != value) {
+                return false;
+            }
+        }
+
+       if(!this.children ||element.children.length < this.children.length)
+            return false;
+
+       let currentCheckedChildren = 0;
+       for(let child of element.children) {
+
+           const htmlElem = child as HTMLElement;
+           if(!htmlElem)
+               continue
+
+           let matches = false;
+           for(; currentCheckedChildren < this.children.length && !matches;currentCheckedChildren++) {
+               matches = this.children[currentCheckedChildren].matchesElement(htmlElem)
+           }
+           if(!matches)
+               return false;
+       }
+
+
+       return true;
+   }
+
+    getResultsForNode (element: HTMLElement, result: any) {
+        if(!this.searchResults)
+            return;
+
+
     }
 
     private static authorizedChars = ((): string => {
@@ -71,6 +120,7 @@ export class SearchNode {
 
     static BuildSearchNode(element: HTMLElement): SearchNode {
         const result: SearchNode = new SearchNode(element.tagName);
+
 
         /*for(let [key, value] of element.attributes) {
 
