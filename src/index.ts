@@ -121,11 +121,27 @@ export class SearchNode {
     static BuildSearchNode(element: HTMLElement): SearchNode {
         const result: SearchNode = new SearchNode(element.tagName);
 
+        if(element.attributes.length > 0) {
+            result.attributes = {};
+            for(let i = 0;i < element.attributes.length;i++) {
+                const item = element.attributes.item(i);
+                if(item)
+                    result.attributes[item.name]=item.value;
+            }
+        }
 
-        /*for(let [key, value] of element.attributes) {
+        if(element.children.length > 0) {
+            result.children = []
+            for(let c of element.children) {
+                const htmlChild = c as HTMLElement;
+                if(htmlChild) {
 
-        }*/
-
+                    const child = SearchNode.BuildSearchNode(htmlChild)
+                    child.parent = result
+                    result.children.push(child)
+                }
+            }
+        }
 
         return result;
     }
