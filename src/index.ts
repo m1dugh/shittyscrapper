@@ -15,10 +15,29 @@ interface SearchResults {
     text: ResultStringFramer[];
 }
 
+
 interface ResultStringFramer {
     start: string;
     end: string;
     name: string;
+}
+
+
+/**
+ *
+ * @param framer
+ * @param text
+ * @return the found variable or undefined
+ */
+function extractVariables(framer: ResultStringFramer, text: string): string | undefined {
+    let beginPos = text.search(framer.start)
+    let endPos = text.search(framer.end)
+
+    if(beginPos > -1 && endPos > -1) {
+        return text.substring(beginPos + framer.start.length, endPos)
+    }
+
+    return undefined;
 }
 
 export class SearchNode {
@@ -155,8 +174,12 @@ export class SearchNode {
     }
 }
 
-// console.log(SearchNode._findResultInString("test ${test_field} test2 ${test_filed2}"))
+const framer = SearchNode._findResultInString("test ${test_field} test2 ${test_filed2}")[0]
+console.log(framer)
 
+console.log(framer.name, ":", extractVariables(framer, "test test test2 "))
+
+/*
 const pattern = `
 <div class="test">
     <span id="test">test</span>
@@ -179,3 +202,4 @@ function FindKeys(pattern: string) {
 
     const document = parser.parseFromString(pattern, "text/xml");
 }
+*/
