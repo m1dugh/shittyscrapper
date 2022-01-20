@@ -7,7 +7,7 @@ interface SearchResults {
     /**
      * an object containing attributes to check against as keys and string framers as values
      */
-    attributesStringFramer: { [attr: string]: ResultStringFramer[] };
+    attributes: { [attr: string]: ResultStringFramer[] };
 
     /**
      * the string framers for the element.innerText
@@ -33,7 +33,7 @@ function extractVariables(framer: ResultStringFramer, text: string): string | un
     let beginPos = text.search(framer.start)
     let endPos = text.search(framer.end)
 
-    if(beginPos > -1 && endPos > -1) {
+    if (beginPos > -1 && endPos > -1) {
         return text.substring(beginPos + framer.start.length, endPos)
     }
 
@@ -111,6 +111,8 @@ export class SearchNode {
 
     static _findResultInString(data: string): ResultStringFramer[] {
 
+        if(!data)
+            return []
 
         let isOpened: boolean = false;
         let res: ResultStringFramer[] = []
@@ -148,12 +150,32 @@ export class SearchNode {
     static BuildSearchNode(element: HTMLElement): SearchNode {
         const result: SearchNode = new SearchNode(element.tagName);
 
+        const textFrames = this._findResultInString(element.innerText)
+        if (textFrames.length > 0) {
+            result.searchResults = {text: textFrames, attributes: {}}
+        }
+
         if (element.attributes.length > 0) {
             result.attributes = {};
+
+            let resultFramersAttributes: { [attr: string]: ResultStringFramer[] } = {};
+
             for (let i = 0; i < element.attributes.length; i++) {
                 const item = element.attributes.item(i);
-                if (item)
-                    result.attributes[item.name] = item.value;
+                if (item) {
+                    const framers = this._findResultInString(item.value)
+                    if (framers.length > 0) {
+                        resultFramersAttributes[item.name] = framers;
+                    } else
+                        result.attributes[item.name] = item.value;
+                }
+            }
+
+            if(Object.keys(resultFramersAttributes).length > 0) {
+                if(!result.searchResults)
+                    result.searchResults = {text: [], attributes: resultFramersAttributes}
+                else
+                    result.searchResults.attributes = resultFramersAttributes;
             }
         }
 
@@ -174,14 +196,9 @@ export class SearchNode {
     }
 }
 
-const framer = SearchNode._findResultInString("test ${test_field} test2 ${test_filed2}")[0]
-console.log(framer)
 
-console.log(framer.name, ":", extractVariables(framer, "test test test2 "))
-
-/*
 const pattern = `
-<div class="test">
+<div class="\${test_field}">
     <span id="test">test</span>
 </div>
 `
@@ -202,4 +219,3 @@ function FindKeys(pattern: string) {
 
     const document = parser.parseFromString(pattern, "text/xml");
 }
-*/
