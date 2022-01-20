@@ -31,13 +31,22 @@ interface ResultStringFramer {
  */
 function extractVariables(framer: ResultStringFramer, text: string): string | undefined {
     let beginPos = text.search(framer.start)
-    let endPos = text.search(framer.end)
+
+    let endPos = framer.end?.length == 0 ? text.length : text.search(framer.end)
 
     if (beginPos > -1 && endPos > -1) {
         return text.substring(beginPos + framer.start.length, endPos)
     }
 
     return undefined;
+}
+
+function getInnerText(element: HTMLElement): string {
+    const clone = element.cloneNode(true) as HTMLElement
+    while(clone.lastElementChild)
+        clone.lastElementChild.remove()
+
+    return clone.innerHTML
 }
 
 export class SearchNode {
@@ -51,8 +60,9 @@ export class SearchNode {
                 public attributes?: { [key: string]: string }) {
     }
 
-    matchesElement(element: HTMLElement): boolean {
+    getResults(element: HTMLElement, result: any): boolean {
         let res: boolean = true;
+
 
         if (this.tag != element.tagName)
             res = false;
@@ -66,19 +76,17 @@ export class SearchNode {
             }
         }
 
-
         if (res && this.children && element.children.length >= this.children.length) {
 
             let currentCheckedChildren = 0;
             for (let child of element.children) {
-
                 const htmlElem = child as HTMLElement;
                 if (!htmlElem)
                     continue
 
                 let matches = false;
                 for (; currentCheckedChildren < this.children.length && !matches; currentCheckedChildren++) {
-                    matches = this.children[currentCheckedChildren].matchesElement(htmlElem)
+                    matches = this.children[currentCheckedChildren].getResults(htmlElem, result)
                 }
                 if (currentCheckedChildren >= this.children.length)
                     break;
@@ -86,13 +94,23 @@ export class SearchNode {
 
 
         } else {
-            res = false;
+            res = !this.children;
         }
+
+        if (res) {
+            this._getResultsForNode(element, res);
+        }
+
         return res;
     }
 
-    getResultsForNode(element: HTMLElement, result: any) {
-        if (!this.searchResults || !this.matchesElement(element))
+    /**
+     *
+     * @param element is an element matching the search node
+     * @param result is a dict the variables will be added to
+     */
+    _getResultsForNode(element: HTMLElement, result: any) {
+        if (!this.searchResults)
             return;
 
         for (let [attr, framers] of Object.entries(this.searchResults.attributes)) {
@@ -104,15 +122,11 @@ export class SearchNode {
         }
 
         for (let framer of this.searchResults.text) {
-            console.log(framer.name, "=>", extractVariables(framer, element.innerText))
+            console.log(framer.name, "=>", extractVariables(framer, getInnerText(element)))
         }
 
-        if (this.children)
-            for (let child of this.children) {
-                //child.getResultsForNode()
-            }
-
     }
+
 
     private static authorizedChars = ((): string => {
         let result = "[]._0123456789";
@@ -169,7 +183,8 @@ export class SearchNode {
     static BuildSearchNode(element: HTMLElement): SearchNode {
         const result: SearchNode = new SearchNode(element.tagName);
 
-        const textFrames = this._findResultInString(element.innerText)
+        const textFrames = this._findResultInString(getInnerText(element))
+
         if (textFrames.length > 0) {
             result.searchResults = {text: textFrames, attributes: {}}
         }
@@ -195,7 +210,10 @@ export class SearchNode {
                     result.searchResults = {text: [], attributes: resultFramersAttributes}
                 else
                     result.searchResults.attributes = resultFramersAttributes;
+
             }
+
+
         }
 
         if (element.children.length > 0) {
@@ -218,14 +236,14 @@ export class SearchNode {
 
 const pattern = `
 <div class="\${test_field}">
-    <span id="test">test</span>
+    <span id="test">Hello, \${name}</span>
 </div>
 `
 
 const data = `
 <div class="test" id="test">
-    <span>test</span>
-    <span id="test" class="test">
+    <span id="test">Hello, Romain</span>
+    <span class="test">
         <span>test2</span>
     </span>
 </div>
@@ -233,7 +251,7 @@ const data = `
 
 const element = new DOMParser().parseFromString(data, "text/xml").documentElement
 const searchNode = SearchNode.BuildSearchNode(new DOMParser().parseFromString(pattern, "text/xml").documentElement)
-console.log(searchNode, searchNode.matchesElement(element))
+console.log(searchNode.getResults(element, {}))
 
 function FindKeys(pattern: string) {
     const parser = new DOMParser()
