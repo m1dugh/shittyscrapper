@@ -52,46 +52,65 @@ export class SearchNode {
     }
 
     matchesElement(element: HTMLElement): boolean {
-        if (this.tag != element.tagName)
-            return false;
+        let res: boolean = true;
 
-        if (this.attributes) {
+        if (this.tag != element.tagName)
+            res = false;
+
+        if (res && this.attributes) {
             for (let [key, value] of Object.entries(this.attributes)) {
                 if (element.attributes.getNamedItem(key)?.value != value) {
-                    return false;
+                    res = false;
+                    break;
                 }
             }
         }
 
 
-        if (!this.children)
-            return true;
-        if (element.children.length < this.children.length)
-            return false;
+        if (res && this.children && element.children.length >= this.children.length) {
 
-        let currentCheckedChildren = 0;
-        for (let child of element.children) {
+            let currentCheckedChildren = 0;
+            for (let child of element.children) {
 
-            const htmlElem = child as HTMLElement;
-            if (!htmlElem)
-                continue
+                const htmlElem = child as HTMLElement;
+                if (!htmlElem)
+                    continue
 
-            let matches = false;
-            for (; currentCheckedChildren < this.children.length && !matches; currentCheckedChildren++) {
-                matches = this.children[currentCheckedChildren].matchesElement(htmlElem)
+                let matches = false;
+                for (; currentCheckedChildren < this.children.length && !matches; currentCheckedChildren++) {
+                    matches = this.children[currentCheckedChildren].matchesElement(htmlElem)
+                }
+                if (currentCheckedChildren >= this.children.length)
+                    break;
             }
-            if (currentCheckedChildren >= this.children.length)
-                return true;
+
+
+        } else {
+            res = false;
         }
-
-
-        return false;
+        return res;
     }
 
     getResultsForNode(element: HTMLElement, result: any) {
-        if (!this.searchResults)
+        if (!this.searchResults || !this.matchesElement(element))
             return;
 
+        for (let [attr, framers] of Object.entries(this.searchResults.attributes)) {
+            for (let framer of framers) {
+                const elemAttr = element.attributes.getNamedItem(attr)
+                if (elemAttr)
+                    console.log(framer.name, "=>", extractVariables(framer, elemAttr.value))
+            }
+        }
+
+        for (let framer of this.searchResults.text) {
+            console.log(framer.name, "=>", extractVariables(framer, element.innerText))
+        }
+
+        if (this.children)
+            for (let child of this.children) {
+                //child.getResultsForNode()
+            }
 
     }
 
@@ -111,7 +130,7 @@ export class SearchNode {
 
     static _findResultInString(data: string): ResultStringFramer[] {
 
-        if(!data)
+        if (!data)
             return []
 
         let isOpened: boolean = false;
@@ -171,8 +190,8 @@ export class SearchNode {
                 }
             }
 
-            if(Object.keys(resultFramersAttributes).length > 0) {
-                if(!result.searchResults)
+            if (Object.keys(resultFramersAttributes).length > 0) {
+                if (!result.searchResults)
                     result.searchResults = {text: [], attributes: resultFramersAttributes}
                 else
                     result.searchResults.attributes = resultFramersAttributes;
@@ -206,7 +225,9 @@ const pattern = `
 const data = `
 <div class="test" id="test">
     <span>test</span>
-    <span id="test" class="test">test2</span>
+    <span id="test" class="test">
+        <span>test2</span>
+    </span>
 </div>
 `
 
