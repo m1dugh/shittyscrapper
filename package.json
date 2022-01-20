@@ -18,7 +18,11 @@
   },
   "homepage": "https://github.com/m1dugh/shittyscrapper#readme",
   "devDependencies": {
+    "@types/jsdom": "^16.2.14",
     "@types/node": "^17.0.10",
     "typescript": "^4.5.4"
+  },
+  "dependencies": {
+    "jsdom": "^19.0.0"
   }
 }
