@@ -43,10 +43,25 @@ function extractVariables(framer: ResultStringFramer, text: string): string | un
 
 function getInnerText(element: HTMLElement): string {
     const clone = element.cloneNode(true) as HTMLElement
-    while(clone.lastElementChild)
+    while (clone.lastElementChild)
         clone.lastElementChild.remove()
 
     return clone.innerHTML
+}
+
+function AddToMap(map: any, key: string, value: string) {
+    let subKeys = key.split(".")
+    const lastKey = subKeys.pop()
+    let currentElement: any = map;
+    if (lastKey == undefined)
+        return;
+    for (let key of subKeys) {
+        if (!Object.keys(currentElement).includes(key) || typeof currentElement[key] !== "object") {
+            currentElement[key] = {}
+        }
+        currentElement = currentElement[key]
+    }
+    currentElement[lastKey] = value
 }
 
 export class SearchNode {
@@ -60,9 +75,14 @@ export class SearchNode {
                 public attributes?: { [key: string]: string }) {
     }
 
-    getResults(element: HTMLElement, result: any): boolean {
-        let res: boolean = true;
+    public mapElement(element: HTMLElement): any {
+        const result = {}
+        this._getResults(element, result)
+        return result;
+    }
 
+    private _getResults(element: HTMLElement, result: any): boolean {
+        let res: boolean = true;
 
         if (this.tag != element.tagName)
             res = false;
@@ -76,6 +96,7 @@ export class SearchNode {
             }
         }
 
+
         if (res && this.children && element.children.length >= this.children.length) {
 
             let currentCheckedChildren = 0;
@@ -86,7 +107,7 @@ export class SearchNode {
 
                 let matches = false;
                 for (; currentCheckedChildren < this.children.length && !matches; currentCheckedChildren++) {
-                    matches = this.children[currentCheckedChildren].getResults(htmlElem, result)
+                    matches = this.children[currentCheckedChildren]._getResults(htmlElem, result)
                 }
                 if (currentCheckedChildren >= this.children.length)
                     break;
@@ -98,7 +119,7 @@ export class SearchNode {
         }
 
         if (res) {
-            this._getResultsForNode(element, res);
+            this._getResultsForNode(element, result);
         }
 
         return res;
@@ -109,20 +130,28 @@ export class SearchNode {
      * @param element is an element matching the search node
      * @param result is a dict the variables will be added to
      */
-    _getResultsForNode(element: HTMLElement, result: any) {
+    private _getResultsForNode(element: HTMLElement, result: any) {
         if (!this.searchResults)
             return;
 
         for (let [attr, framers] of Object.entries(this.searchResults.attributes)) {
             for (let framer of framers) {
                 const elemAttr = element.attributes.getNamedItem(attr)
-                if (elemAttr)
-                    console.log(framer.name, "=>", extractVariables(framer, elemAttr.value))
+                if (elemAttr) {
+                    const extracted = extractVariables(framer, elemAttr.value)
+                    if (extracted) {
+                        AddToMap(result, framer.name, extracted)
+                    }
+                }
             }
         }
 
         for (let framer of this.searchResults.text) {
-            console.log(framer.name, "=>", extractVariables(framer, getInnerText(element)))
+            const extracted = extractVariables(framer, getInnerText(element))
+
+            if (extracted) {
+                AddToMap(result, framer.name, extracted)
+            }
         }
 
     }
@@ -251,10 +280,12 @@ const data = `
 
 const element = new DOMParser().parseFromString(data, "text/xml").documentElement
 const searchNode = SearchNode.BuildSearchNode(new DOMParser().parseFromString(pattern, "text/xml").documentElement)
-console.log(searchNode.getResults(element, {}))
+console.log(searchNode.mapElement(element))
+
 
 function FindKeys(pattern: string) {
     const parser = new DOMParser()
 
     const document = parser.parseFromString(pattern, "text/xml");
 }
+
