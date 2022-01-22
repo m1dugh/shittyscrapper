@@ -51,7 +51,7 @@ function getInnerText(element: HTMLElement): string {
 
 function AddToMap(map: any, key: string, value: string) {
     let subKeys = key.split(".")
-    const lastKey = subKeys.pop()
+    let lastKey = subKeys.pop()
     let currentElement: any = map;
     if (lastKey == undefined)
         return;
@@ -61,7 +61,19 @@ function AddToMap(map: any, key: string, value: string) {
         }
         currentElement = currentElement[key]
     }
-    currentElement[lastKey] = value
+
+    if(lastKey.endsWith("[]")) {
+        // removes [] from name
+        lastKey = lastKey.substring(0, lastKey.length - 2)
+        if(typeof currentElement[lastKey] !== "object") {
+            currentElement[lastKey] = []
+        }
+
+        currentElement[lastKey].push(value)
+    } else {
+        currentElement[lastKey] = value
+    }
+
 }
 
 export class SearchNode {
