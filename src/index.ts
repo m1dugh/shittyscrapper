@@ -99,18 +99,18 @@ export class SearchNode {
 
         if (res && this.children && element.children.length >= this.children.length) {
 
-            let currentCheckedChildren = 0;
+            let checkedChildren = [];
             for (let child of element.children) {
                 const htmlElem = child as HTMLElement;
                 if (!htmlElem)
                     continue
 
-                let matches = false;
-                for (; currentCheckedChildren < this.children.length && !matches; currentCheckedChildren++) {
-                    matches = this.children[currentCheckedChildren]._getResults(htmlElem, result)
+                for (let currentCheckedChildren = 0; currentCheckedChildren < this.children.length; currentCheckedChildren++) {
+                    if(this.children[currentCheckedChildren]._getResults(htmlElem, result)) {
+                        checkedChildren[currentCheckedChildren] = true;
+                        break;
+                    }
                 }
-                if (currentCheckedChildren >= this.children.length)
-                    break;
             }
 
 
@@ -265,13 +265,14 @@ export class SearchNode {
 
 const pattern = `
 <div class="\${test_field}">
-    <span id="test">Hello, \${name}</span>
+    <span class="test">Hello, \${name[]}</span>
 </div>
 `
 
 const data = `
 <div class="test" id="test">
-    <span id="test">Hello, Romain</span>
+    <span class="test">Hello, World!</span>
+    <span class="test">Hello, Romain</span>
     <span class="test">
         <span>test2</span>
     </span>
