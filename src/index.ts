@@ -56,16 +56,30 @@ function AddToMap(map: any, key: string, value: string) {
     if (lastKey == undefined)
         return;
     for (let key of subKeys) {
+
+        const isArray = key.endsWith("[]");
+        if (isArray)
+            // removes []
+            key = key.substring(0, key.length - 2);
+
         if (!Object.keys(currentElement).includes(key) || typeof currentElement[key] !== "object") {
-            currentElement[key] = {}
+            if (isArray) {
+                currentElement[key] = [];
+            } else
+                currentElement[key] = {}
         }
+
         currentElement = currentElement[key]
+        if(isArray) {
+            currentElement.push({})
+            currentElement = currentElement[currentElement.length-1]
+        }
     }
 
-    if(lastKey.endsWith("[]")) {
+    if (lastKey.endsWith("[]")) {
         // removes [] from name
         lastKey = lastKey.substring(0, lastKey.length - 2)
-        if(typeof currentElement[lastKey] !== "object") {
+        if (typeof currentElement[lastKey] !== "object") {
             currentElement[lastKey] = []
         }
 
@@ -118,7 +132,7 @@ export class SearchNode {
                     continue
 
                 for (let currentCheckedChildren = 0; currentCheckedChildren < this.children.length; currentCheckedChildren++) {
-                    if(this.children[currentCheckedChildren]._getResults(htmlElem, result)) {
+                    if (this.children[currentCheckedChildren]._getResults(htmlElem, result)) {
                         checkedChildren[currentCheckedChildren] = true;
                         break;
                     }
@@ -277,7 +291,7 @@ export class SearchNode {
 
 const pattern = `
 <div class="\${test_field}">
-    <span class="test">Hello, \${name[]}</span>
+    <span class="test">Hello, \${persons[].name}</span>
 </div>
 `
 
