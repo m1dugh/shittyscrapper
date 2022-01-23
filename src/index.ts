@@ -70,9 +70,9 @@ function AddToMap(map: any, key: string, value: string) {
         }
 
         currentElement = currentElement[key]
-        if(isArray) {
+        if (isArray) {
             currentElement.push({})
-            currentElement = currentElement[currentElement.length-1]
+            currentElement = currentElement[currentElement.length - 1]
         }
     }
 
@@ -113,18 +113,17 @@ export class SearchNode {
         if (this.tag != element.tagName)
             res = false;
 
+
         if (res && this.attributes) {
             for (let [key, value] of Object.entries(this.attributes)) {
                 if (element.attributes.getNamedItem(key)?.value != value) {
                     res = false;
-                    break;
                 }
             }
         }
 
 
         if (res && this.children && element.children.length >= this.children.length) {
-
             let checkedChildren = [];
             for (let child of element.children) {
                 const htmlElem = child as HTMLElement;
@@ -139,10 +138,16 @@ export class SearchNode {
                 }
             }
 
-
+            for (let value of checkedChildren) {
+                if (value !== true) {
+                    res = false;
+                    break;
+                }
+            }
         } else {
-            res = !this.children;
+            res &&= !this.children;
         }
+
 
         if (res) {
             this._getResultsForNode(element, result);
@@ -271,6 +276,7 @@ export class SearchNode {
 
         }
 
+
         if (element.children.length > 0) {
             result.children = []
             for (let c of element.children) {
@@ -292,6 +298,7 @@ export class SearchNode {
 const pattern = `
 <div class="\${test_field}">
     <span class="test">Hello, \${persons[].name}</span>
+    <span class="t"><span>\${test2}</span></span>
 </div>
 `
 
@@ -299,7 +306,7 @@ const data = `
 <div class="test" id="test">
     <span class="test">Hello, World!</span>
     <span class="test">Hello, Romain</span>
-    <span class="test">
+    <span class="t">
         <span>test2</span>
     </span>
 </div>
@@ -308,7 +315,6 @@ const data = `
 const element = new DOMParser().parseFromString(data, "text/xml").documentElement
 const searchNode = SearchNode.BuildSearchNode(new DOMParser().parseFromString(pattern, "text/xml").documentElement)
 console.log(searchNode.mapElement(element))
-
 
 function FindKeys(pattern: string) {
     const parser = new DOMParser()
