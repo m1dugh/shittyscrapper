@@ -50,6 +50,8 @@ function getInnerText(element: HTMLElement): string {
 }
 
 function AddToMap(map: any, key: string, value: string) {
+    if (key === "_")
+        return
     let subKeys = key.split(".")
     let lastKey = subKeys.pop()
     let currentElement: any = map;
@@ -90,7 +92,7 @@ function AddToMap(map: any, key: string, value: string) {
 
 }
 
-export class SearchNode {
+export default class SearchNode {
 
     private searchResults?: SearchResults;
 
@@ -101,9 +103,11 @@ export class SearchNode {
                 public attributes?: { [key: string]: string }) {
     }
 
-    public mapElement(element: HTMLElement): any {
+    public mapData(data: string): any {
+
+        const document = new DOMParser().parseFromString(data, "text/html")
         const result = {}
-        this._getResults(element, result)
+        this._getResults(document.documentElement, result)
         return result;
     }
 
@@ -240,7 +244,14 @@ export class SearchNode {
 
     }
 
-    static BuildSearchNode(element: HTMLElement): SearchNode {
+    static BuildSearchNode(data: string, type: DOMParserSupportedType = "text/html"): SearchNode {
+        const document = new DOMParser().parseFromString(data, type);
+
+        return SearchNode._buildSearchNode(document.documentElement)
+    }
+
+
+    private static _buildSearchNode(element: HTMLElement): SearchNode {
         const result: SearchNode = new SearchNode(element.tagName);
 
         const textFrames = this._findResultInString(getInnerText(element))
@@ -283,7 +294,7 @@ export class SearchNode {
                 const htmlChild = c as HTMLElement;
                 if (htmlChild) {
 
-                    const child = SearchNode.BuildSearchNode(htmlChild)
+                    const child = SearchNode._buildSearchNode(htmlChild)
                     child.parent = result
                     result.children.push(child)
                 }
@@ -296,13 +307,14 @@ export class SearchNode {
 
 
 const pattern = `
-<div class="\${test_field}">
+<html><body><div class="\${test_field}">
     <span class="test">Hello, \${persons[].name}</span>
     <span class="t"><span>\${test2}</span></span>
-</div>
+</div></body></html>
 `
 
 const data = `
+<html><body>
 <div class="test" id="test">
     <span class="test">Hello, World!</span>
     <span class="test">Hello, Romain</span>
@@ -310,15 +322,8 @@ const data = `
         <span>test2</span>
     </span>
 </div>
+</body></html>
 `
 
-const element = new DOMParser().parseFromString(data, "text/xml").documentElement
-const searchNode = SearchNode.BuildSearchNode(new DOMParser().parseFromString(pattern, "text/xml").documentElement)
-console.log(searchNode.mapElement(element))
-
-function FindKeys(pattern: string) {
-    const parser = new DOMParser()
-
-    const document = parser.parseFromString(pattern, "text/xml");
-}
-
+const node = SearchNode.BuildSearchNode(pattern)
+console.log(node.mapData(data))
