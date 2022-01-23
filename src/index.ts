@@ -103,20 +103,46 @@ export default class SearchNode {
                 public attributes?: { [key: string]: string }) {
     }
 
-    public mapData(data: string): any {
+    /**
+     *
+     * @param data the string containing the html data
+     * @param strict a flag when set to true compares pattern and data from the root instead of scanning data for matching pattern
+     */
+    public MapData(data: string, strict: boolean = false): any {
 
         const document = new DOMParser().parseFromString(data, "text/html")
         const result = {}
-        this._getResults(document.documentElement, result)
+
+        if (strict)
+            this._getResults(document.documentElement, result)
+        else {
+            let queryString = this.tag;
+
+            if (this.attributes) {
+
+                if (this.attributes && Object.keys(this.attributes).includes("class")) {
+                    for (let cl of this.attributes["class"]) {
+                        queryString += `.${cl}`
+                    }
+                }
+            }
+            for (let child of document.querySelectorAll(queryString)) {
+                const htmlElement = child as HTMLElement;
+                if (htmlElement)
+                    this._getResults(htmlElement, result)
+            }
+
+        }
         return result;
     }
 
+
     private _getResults(element: HTMLElement, result: any): boolean {
+
         let res: boolean = true;
 
-        if (this.tag != element.tagName)
+        if (this.tag != element.tagName.toLowerCase())
             res = false;
-
 
         if (res && this.attributes) {
             for (let [key, value] of Object.entries(this.attributes)) {
@@ -166,6 +192,7 @@ export default class SearchNode {
      * @param result is a dict the variables will be added to
      */
     private _getResultsForNode(element: HTMLElement, result: any) {
+
         if (!this.searchResults)
             return;
 
@@ -252,7 +279,7 @@ export default class SearchNode {
 
 
     private static _buildSearchNode(element: HTMLElement): SearchNode {
-        const result: SearchNode = new SearchNode(element.tagName);
+        const result: SearchNode = new SearchNode(element.tagName.toLowerCase());
 
         const textFrames = this._findResultInString(getInnerText(element))
 
@@ -307,10 +334,10 @@ export default class SearchNode {
 
 
 const pattern = `
-<html><body><div class="\${test_field}">
+<div class="\${test_field}">
     <span class="test">Hello, \${persons[].name}</span>
     <span class="t"><span>\${test2}</span></span>
-</div></body></html>
+</div>
 `
 
 const data = `
@@ -325,5 +352,5 @@ const data = `
 </body></html>
 `
 
-const node = SearchNode.BuildSearchNode(pattern)
-console.log(node.mapData(data))
+const node = SearchNode.BuildSearchNode(pattern, "text/xml")
+console.log(node.MapData(data))
