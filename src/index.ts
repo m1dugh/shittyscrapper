@@ -35,9 +35,11 @@ function isDataValidated(extracted: string | undefined, framer: ResultStringFram
     if (framer.name.length > 0 && i > 0 && framer.name[0] === "/") {
         try {
             const reg = new RegExp(framer.name.slice(1, i), framer.name.slice(i + 1));
-            if (!extracted.match(reg))
+            console.log(extracted, "=>", reg, extracted.match(reg))
+            if (extracted.match(reg) == null)
                 return false
         } catch (err) {
+            console.error(err)
         }
     }
 
@@ -200,11 +202,7 @@ export default class SearchNode {
             }
         }
 
-        const log = [element.tagName, res]
-
         res &&= this._matchNodeCheckers(element)
-
-        log.push(res)
 
         const effectiveIsBlock = this.isBlock && res;
         let effectiveResult: {} = effectiveIsBlock ? {} : result;
@@ -237,12 +235,9 @@ export default class SearchNode {
             res &&= !this.children;
         }
 
-        console.log(...log, res)
-
 
         if (res) {
             const innerText = getInnerText(element)
-            element.tagName.toLowerCase() === "div" && innerText != "&nbsp;" && console.log(innerText)
             this._getResultsForNode(element, effectiveResult);
         }
 
@@ -489,13 +484,8 @@ export default class SearchNode {
 
 const pattern = `
 <div class="\${test_field}">
-    <span>\${/testi/}\${test}</span>
-    <div class="person" datatype="block" key="people[]">
-        <span class="nam\${_}">\${Name}</span>
-        <span class="\${_}ge">\${Age}</span> 
-    </div>
-
-    <span class="t"><span>\${test2}</span></span>
+    <span>\${test}</span>
+    <span class="t">\${test2}</span>
 </div>
 `
 
@@ -503,16 +493,8 @@ const data = `
 <html><body>
 <div class="test" id="test">
     <span>test</span>
-    <div class="person">
-        <span class="name">Romain</span>
-        <span class="age">18</span> 
-    </div>
-    <div class="person">
-        <span class="name">test</span>
-        <span class="age">-1</span> 
-    </div>
     <span class="t">
-        <span>test2</span>
+        test2
     </span>
 </div>
 </body></html>
