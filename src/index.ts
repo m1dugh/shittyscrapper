@@ -1,4 +1,5 @@
 import {JSDOM} from "jsdom";
+import {readFileSync} from "fs";
 
 global.DOMParser = new JSDOM().window.DOMParser
 
@@ -41,12 +42,16 @@ function extractVariables(framer: ResultStringFramer, text: string): string | un
     return undefined;
 }
 
+function _removeWhiteSpaces(text: string) {
+    return text.replace(/^\s+|\s+$/g, '')
+}
+
 function getInnerText(element: HTMLElement): string {
     const clone = element.cloneNode(true) as HTMLElement
     while (clone.lastElementChild)
         clone.lastElementChild.remove()
 
-    return clone.innerHTML
+    return _removeWhiteSpaces(clone.innerHTML)
 }
 
 function AddToMap(map: any, key: string, value: string) {
@@ -121,11 +126,12 @@ export default class SearchNode {
             if (this.attributes) {
 
                 if (this.attributes && Object.keys(this.attributes).includes("class")) {
-                    for (let cl of this.attributes["class"]) {
+                    for (let cl of this.attributes["class"].split(" ")) {
                         queryString += `.${cl}`
                     }
                 }
             }
+
             for (let child of document.querySelectorAll(queryString)) {
                 const htmlElement = child as HTMLElement;
                 if (htmlElement)
@@ -151,7 +157,6 @@ export default class SearchNode {
                 }
             }
         }
-
 
         if (res && this.children && element.children.length >= this.children.length) {
             let checkedChildren = [];
@@ -196,6 +201,7 @@ export default class SearchNode {
         if (!this.searchResults)
             return;
 
+
         for (let [attr, framers] of Object.entries(this.searchResults.attributes)) {
             for (let framer of framers) {
                 const elemAttr = element.attributes.getNamedItem(attr)
@@ -209,6 +215,7 @@ export default class SearchNode {
         }
 
         for (let framer of this.searchResults.text) {
+            console.log(`"${getInnerText(element)}"`)
             const extracted = extractVariables(framer, getInnerText(element))
 
             if (extracted) {
@@ -271,7 +278,7 @@ export default class SearchNode {
 
     }
 
-    static BuildSearchNode(data: string, type: DOMParserSupportedType = "text/html"): SearchNode {
+    static BuildSearchNode(data: string, type: DOMParserSupportedType = "text/xml"): SearchNode {
         const document = new DOMParser().parseFromString(data, type);
 
         return SearchNode._buildSearchNode(document.documentElement)
@@ -333,7 +340,7 @@ export default class SearchNode {
 }
 
 
-const pattern = `
+/*const pattern = `
 <div class="\${test_field}">
     <span class="test">Hello, \${persons[].name}</span>
     <span class="t"><span>\${test2}</span></span>
@@ -350,7 +357,10 @@ const data = `
     </span>
 </div>
 </body></html>
-`
+`*/
 
-const node = SearchNode.BuildSearchNode(pattern, "text/xml")
+const pattern = readFileSync("./samples/pattern.html", {encoding: "utf-8"})
+const data = readFileSync("./samples/sample_page.html", {encoding: "utf-8"})
+
+const node = SearchNode.BuildSearchNode(pattern)
 console.log(node.MapData(data))
