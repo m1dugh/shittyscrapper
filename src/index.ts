@@ -21,6 +21,27 @@ interface ResultStringFramer {
     start: string;
     end: string;
     name: string;
+    //validator?: RegExp;
+}
+
+function isFramerValidator(framer: ResultStringFramer): boolean {
+    return framer.name.startsWith("/") && framer.name.endsWith("/")
+}
+
+function isDataValidated(extracted: string | undefined, framer: ResultStringFramer): boolean {
+    if (!extracted)
+        return false;
+    const i = framer.name.lastIndexOf("/")
+    if (framer.name.length > 0 && i > 0 && framer.name[0] === "/") {
+        try {
+            const reg = new RegExp(framer.name.slice(1, i), framer.name.slice(i + 1));
+            if (!extracted.match(reg))
+                return false
+        } catch (err) {
+        }
+    }
+
+    return true;
 }
 
 
@@ -102,12 +123,12 @@ export default class SearchNode {
     /**
      * @private the search results for the actual result
      */
-    private searchResults?: SearchResults;
+    public searchResults?: SearchResults;
 
     /**
      * @private the frame results for text and attributes matching
      */
-    private checkers?: SearchResults;
+    public checkers?: SearchResults;
 
     /**
      * @private the flag indicating whether sub keys should be considered as part of data or not
@@ -163,6 +184,8 @@ export default class SearchNode {
 
     private _getResults(element: HTMLElement, result: any): boolean {
 
+        // TODO : remove debug codes
+
         let res: boolean = true;
 
         if (this.tag != element.tagName.toLowerCase())
@@ -177,22 +200,29 @@ export default class SearchNode {
             }
         }
 
+        const log = [element.tagName, res]
+
         res &&= this._matchNodeCheckers(element)
+
+        log.push(res)
 
         const effectiveIsBlock = this.isBlock && res;
         let effectiveResult: {} = effectiveIsBlock ? {} : result;
 
         if (res && this.children && element.children.length >= this.children.length) {
             let checkedChildren = [];
+
+
             for (let child of element.children) {
                 const htmlElem = child as HTMLElement;
                 if (!htmlElem)
                     continue
 
                 for (let currentCheckedChildren = 0; currentCheckedChildren < this.children.length; currentCheckedChildren++) {
-                    if (this.children[currentCheckedChildren]._getResults(htmlElem, effectiveResult)) {
+
+                    if (/*(!checkedChildren[currentCheckedChildren] || this.children[currentCheckedChildren].isBlock)
+                        && */this.children[currentCheckedChildren]._getResults(htmlElem, effectiveResult)) {
                         checkedChildren[currentCheckedChildren] = true;
-                        break;
                     }
                 }
             }
@@ -207,8 +237,12 @@ export default class SearchNode {
             res &&= !this.children;
         }
 
+        console.log(...log, res)
+
 
         if (res) {
+            const innerText = getInnerText(element)
+            element.tagName.toLowerCase() === "div" && innerText != "&nbsp;" && console.log(innerText)
             this._getResultsForNode(element, effectiveResult);
         }
 
@@ -223,21 +257,21 @@ export default class SearchNode {
         if (!this.checkers)
             return true
 
+
         for (let [attr, framers] of Object.entries(this.checkers.attributes)) {
             for (let framer of framers) {
                 const elemAttr = element.attributes.getNamedItem(attr)
                 if (elemAttr) {
-                    if (!extractVariables(framer, elemAttr.value)) {
-                        return false
-                    }
+                    if (!isDataValidated(extractVariables(framer, elemAttr.value), framer))
+                        return false;
                 }
             }
         }
 
         for (let framer of this.checkers.text) {
-            if (!extractVariables(framer, getInnerText(element)))
-                return false;
-
+            const extracted = extractVariables(framer, getInnerText(element))
+            if (!isDataValidated(extracted, framer))
+                return false
         }
         return true;
     }
@@ -277,7 +311,7 @@ export default class SearchNode {
 
 
     private static authorizedChars = ((): string => {
-        let result = "[]._0123456789";
+        let result = "[].:_0123456789";
 
         for (let i = 'a'.charCodeAt(0); i <= 'z'.charCodeAt(0); i++) {
             result += String.fromCharCode(i);
@@ -300,15 +334,22 @@ export default class SearchNode {
         let currentResult: ResultStringFramer = {start: "", end: "", name: ""};
         let newName: string = "";
         let accuString = "";
+        let isRegex = false;
+        let isEscaped = false;
         for (let i = 0; i < data.length; i++) {
             if (data[i] == "$" && i + 1 < data.length && data[i + 1] == "{") {
                 isOpened = true;
+                if (i + 2 < data.length && data[i + 2] === "/") {
+                    isRegex = true
+                    i++
+                }
+                i++
             }
 
 
             if (!isOpened) {
                 accuString += data[i];
-            } else {
+            } else if (!isRegex) {
                 if (this.authorizedChars.includes(data[i])) {
                     newName += data[i];
                 } else if (data[i] == "}") {
@@ -319,6 +360,12 @@ export default class SearchNode {
                     isOpened = false;
                     accuString = "";
                 }
+            } else {
+                if (data[i] === "/" && data[i - 1] != "{" && !isEscaped) {
+                    isRegex = false;
+                }
+                isEscaped = data[i] === "\\"
+                newName += data[i]
             }
 
         }
@@ -344,7 +391,7 @@ export default class SearchNode {
             const checkers: ResultStringFramer[] = []
             const framers: ResultStringFramer[] = []
             for (const f of textFrames) {
-                if (f.name === "_") {
+                if (isFramerValidator(f)) {
                     checkers.push(f)
                 } else {
                     framers.push(f)
@@ -382,7 +429,7 @@ export default class SearchNode {
                         const checkers: ResultStringFramer[] = []
 
                         for (const framer of this._findResultInString(item.value)) {
-                            if (framer.name === "_") {
+                            if (isFramerValidator(framer)) {
                                 checkers.push(framer)
                             } else {
                                 framers.push(framer)
@@ -393,7 +440,7 @@ export default class SearchNode {
                         if (framers.length + checkers.length > 0) {
                             if (framers.length > 0)
                                 resultFramersAttributes[item.name] = framers;
-                            if(checkers.length > 0)
+                            if (checkers.length > 0)
                                 resultCheckersAttributes[item.name] = checkers;
                         } else
                             result.attributes[item.name] = item.value;
@@ -442,6 +489,7 @@ export default class SearchNode {
 
 const pattern = `
 <div class="\${test_field}">
+    <span>\${/testi/}\${test}</span>
     <div class="person" datatype="block" key="people[]">
         <span class="nam\${_}">\${Name}</span>
         <span class="\${_}ge">\${Age}</span> 
@@ -454,6 +502,7 @@ const pattern = `
 const data = `
 <html><body>
 <div class="test" id="test">
+    <span>test</span>
     <div class="person">
         <span class="name">Romain</span>
         <span class="age">18</span> 
@@ -468,10 +517,23 @@ const data = `
 </div>
 </body></html>
 `
-
-// const pattern = readFileSync("./samples/pattern.html", {encoding: "utf-8"})
-// const data = readFileSync("./samples/sample_page.html", {encoding: "utf-8"})
+const node = SearchNode.BuildSearchNode(pattern)
+if (node.children)
+    console.log(node.children[0].checkers?.text)
+console.log(node.MapData(data))
+/*
+const pattern = readFileSync("./samples/pattern.html", {encoding: "utf-8"})
+const data = readFileSync("./samples/sample_page.html", {encoding: "utf-8"})
 
 const node = SearchNode.BuildSearchNode(pattern)
-console.log(node.MapData(data))
-// node.MapData(data).results.filter((o: {}) => Object.keys(o).length > 0).forEach((v: {}) => console.log(v))
+
+const sections = node.MapData(data).sections
+console.log(sections)
+sections.filter(({marks}: any) => marks != undefined).forEach(({marks, Name}: any) => {
+console.log(`======${Name}======`)
+marks.filter((o: any) => Object.keys(o).length === 3 && o["Mark"] != "&nbsp;").map(({
+                                                                                        Name,
+                                                                                        ...args
+                                                                                    }: { Name: string, Date: string, Mark: string }) => ({Name: Name.replace(/\s/g, '').replace(/\n/g, ' '), ...args})).forEach((v: {}) => console.log(v))
+})
+*/
