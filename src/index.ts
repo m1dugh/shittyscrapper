@@ -99,8 +99,24 @@ function AddToMap(map: any, key: string, value: any) {
 
 export default class SearchNode {
 
+    /**
+     * @private the search results for the actual result
+     */
     private searchResults?: SearchResults;
+
+    /**
+     * @private the frame results for text and attributes matching
+     */
+    private checkers?: SearchResults;
+
+    /**
+     * @private the flag indicating whether sub keys should be considered as part of data or not
+     */
     private isBlock: boolean = false;
+
+    /**
+     * @private if isBlock is true, the parent key to append the children to
+     */
     private key: string = "";
 
 
@@ -161,6 +177,8 @@ export default class SearchNode {
             }
         }
 
+        res &&= this._matchNodeCheckers(element)
+
         const effectiveIsBlock = this.isBlock && res;
         let effectiveResult: {} = effectiveIsBlock ? {} : result;
 
@@ -194,11 +212,34 @@ export default class SearchNode {
             this._getResultsForNode(element, effectiveResult);
         }
 
-        if(effectiveIsBlock) {
+        if (effectiveIsBlock) {
             AddToMap(result, this.key, effectiveResult)
         }
 
         return res;
+    }
+
+    private _matchNodeCheckers(element: HTMLElement): boolean {
+        if (!this.checkers)
+            return true
+
+        for (let [attr, framers] of Object.entries(this.checkers.attributes)) {
+            for (let framer of framers) {
+                const elemAttr = element.attributes.getNamedItem(attr)
+                if (elemAttr) {
+                    if (!extractVariables(framer, elemAttr.value)) {
+                        return false
+                    }
+                }
+            }
+        }
+
+        for (let framer of this.checkers.text) {
+            if (!extractVariables(framer, getInnerText(element)))
+                return false;
+
+        }
+        return true;
     }
 
     /**
@@ -300,20 +341,35 @@ export default class SearchNode {
         const textFrames = this._findResultInString(getInnerText(element))
 
         if (textFrames.length > 0) {
-            result.searchResults = {text: textFrames, attributes: {}}
+            const checkers: ResultStringFramer[] = []
+            const framers: ResultStringFramer[] = []
+            for (const f of textFrames) {
+                if (f.name === "_") {
+                    checkers.push(f)
+                } else {
+                    framers.push(f)
+                }
+            }
+
+            if (checkers.length > 0)
+                result.checkers = {text: checkers, attributes: {}}
+
+            if (framers.length > 0)
+                result.searchResults = {text: framers, attributes: {}}
         }
 
         if (element.attributes.length > 0) {
             result.attributes = {};
 
-            let resultFramersAttributes: { [attr: string]: ResultStringFramer[] } = {};
+            const resultFramersAttributes: { [attr: string]: ResultStringFramer[] } = {};
+            const resultCheckersAttributes: { [attr: string]: ResultStringFramer[] } = {};
 
             for (let i = 0; i < element.attributes.length; i++) {
                 const item = element.attributes.item(i);
                 if (item) {
 
                     if (item.name === "datatype") {
-                        switch(item.value) {
+                        switch (item.value) {
                             case "block":
                                 result.isBlock = true;
                                 break;
@@ -322,11 +378,27 @@ export default class SearchNode {
                     } else if (item.name === "key") {
                         result.key = item.value
                     } else {
-                        const framers = this._findResultInString(item.value)
-                        if (framers.length > 0) {
-                            resultFramersAttributes[item.name] = framers;
+                        const framers: ResultStringFramer[] = []
+                        const checkers: ResultStringFramer[] = []
+
+                        for (const framer of this._findResultInString(item.value)) {
+                            if (framer.name === "_") {
+                                checkers.push(framer)
+                            } else {
+                                framers.push(framer)
+                            }
+                        }
+
+
+                        if (framers.length + checkers.length > 0) {
+                            if (framers.length > 0)
+                                resultFramersAttributes[item.name] = framers;
+                            if(checkers.length > 0)
+                                resultCheckersAttributes[item.name] = checkers;
                         } else
                             result.attributes[item.name] = item.value;
+
+
                     }
                 }
             }
@@ -336,6 +408,13 @@ export default class SearchNode {
                     result.searchResults = {text: [], attributes: resultFramersAttributes}
                 else
                     result.searchResults.attributes = resultFramersAttributes;
+
+            }
+            if (Object.keys(resultCheckersAttributes).length > 0) {
+                if (!result.checkers)
+                    result.checkers = {text: [], attributes: resultCheckersAttributes}
+                else
+                    result.checkers.attributes = resultCheckersAttributes;
 
             }
 
@@ -364,8 +443,8 @@ export default class SearchNode {
 const pattern = `
 <div class="\${test_field}">
     <div class="person" datatype="block" key="people[]">
-        <span class="name">\${Name}</span>
-        <span class="age">\${Age}</span> 
+        <span class="nam\${_}">\${Name}</span>
+        <span class="\${_}ge">\${Age}</span> 
     </div>
 
     <span class="t"><span>\${test2}</span></span>
@@ -395,3 +474,4 @@ const data = `
 
 const node = SearchNode.BuildSearchNode(pattern)
 console.log(node.MapData(data))
+// node.MapData(data).results.filter((o: {}) => Object.keys(o).length > 0).forEach((v: {}) => console.log(v))
