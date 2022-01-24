@@ -54,7 +54,7 @@ function getInnerText(element: HTMLElement): string {
     return _removeWhiteSpaces(clone.innerHTML)
 }
 
-function AddToMap(map: any, key: string, value: string) {
+function AddToMap(map: any, key: string, value: any) {
     if (key === "_")
         return
     let subKeys = key.split(".")
@@ -100,6 +100,8 @@ function AddToMap(map: any, key: string, value: string) {
 export default class SearchNode {
 
     private searchResults?: SearchResults;
+    private isBlock: boolean = false;
+    private key: string = "";
 
 
     constructor(public tag: string,
@@ -150,6 +152,7 @@ export default class SearchNode {
         if (this.tag != element.tagName.toLowerCase())
             res = false;
 
+
         if (res && this.attributes) {
             for (let [key, value] of Object.entries(this.attributes)) {
                 if (element.attributes.getNamedItem(key)?.value != value) {
@@ -157,6 +160,9 @@ export default class SearchNode {
                 }
             }
         }
+
+        const effectiveIsBlock = this.isBlock && res;
+        let effectiveResult: {} = effectiveIsBlock ? {} : result;
 
         if (res && this.children && element.children.length >= this.children.length) {
             let checkedChildren = [];
@@ -166,7 +172,7 @@ export default class SearchNode {
                     continue
 
                 for (let currentCheckedChildren = 0; currentCheckedChildren < this.children.length; currentCheckedChildren++) {
-                    if (this.children[currentCheckedChildren]._getResults(htmlElem, result)) {
+                    if (this.children[currentCheckedChildren]._getResults(htmlElem, effectiveResult)) {
                         checkedChildren[currentCheckedChildren] = true;
                         break;
                     }
@@ -185,7 +191,11 @@ export default class SearchNode {
 
 
         if (res) {
-            this._getResultsForNode(element, result);
+            this._getResultsForNode(element, effectiveResult);
+        }
+
+        if(effectiveIsBlock) {
+            AddToMap(result, this.key, effectiveResult)
         }
 
         return res;
@@ -215,7 +225,6 @@ export default class SearchNode {
         }
 
         for (let framer of this.searchResults.text) {
-            console.log(`"${getInnerText(element)}"`)
             const extracted = extractVariables(framer, getInnerText(element))
 
             if (extracted) {
@@ -302,11 +311,23 @@ export default class SearchNode {
             for (let i = 0; i < element.attributes.length; i++) {
                 const item = element.attributes.item(i);
                 if (item) {
-                    const framers = this._findResultInString(item.value)
-                    if (framers.length > 0) {
-                        resultFramersAttributes[item.name] = framers;
-                    } else
-                        result.attributes[item.name] = item.value;
+
+                    if (item.name === "datatype") {
+                        switch(item.value) {
+                            case "block":
+                                result.isBlock = true;
+                                break;
+                        }
+
+                    } else if (item.name === "key") {
+                        result.key = item.value
+                    } else {
+                        const framers = this._findResultInString(item.value)
+                        if (framers.length > 0) {
+                            resultFramersAttributes[item.name] = framers;
+                        } else
+                            result.attributes[item.name] = item.value;
+                    }
                 }
             }
 
@@ -340,9 +361,13 @@ export default class SearchNode {
 }
 
 
-/*const pattern = `
+const pattern = `
 <div class="\${test_field}">
-    <span class="test">Hello, \${persons[].name}</span>
+    <div class="person" datatype="block" key="people[]">
+        <span class="name">\${Name}</span>
+        <span class="age">\${Age}</span> 
+    </div>
+
     <span class="t"><span>\${test2}</span></span>
 </div>
 `
@@ -350,17 +375,23 @@ export default class SearchNode {
 const data = `
 <html><body>
 <div class="test" id="test">
-    <span class="test">Hello, World!</span>
-    <span class="test">Hello, Romain</span>
+    <div class="person">
+        <span class="name">Romain</span>
+        <span class="age">18</span> 
+    </div>
+    <div class="person">
+        <span class="name">test</span>
+        <span class="age">-1</span> 
+    </div>
     <span class="t">
         <span>test2</span>
     </span>
 </div>
 </body></html>
-`*/
+`
 
-const pattern = readFileSync("./samples/pattern.html", {encoding: "utf-8"})
-const data = readFileSync("./samples/sample_page.html", {encoding: "utf-8"})
+// const pattern = readFileSync("./samples/pattern.html", {encoding: "utf-8"})
+// const data = readFileSync("./samples/sample_page.html", {encoding: "utf-8"})
 
 const node = SearchNode.BuildSearchNode(pattern)
 console.log(node.MapData(data))
