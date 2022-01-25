@@ -1,8 +1,15 @@
 import {JSDOM} from "jsdom";
-import {readFileSync} from "fs";
 
 global.DOMParser = new JSDOM().window.DOMParser
 
+
+type NodeDataType = number;
+const Block: NodeDataType = 1;
+const Repeatable: NodeDataType = 2*Block;
+
+function dataTypeContainsFlag(data: NodeDataType, flag: NodeDataType): boolean {
+    return (data & flag) !== 0;
+}
 
 interface SearchResults {
     /**
@@ -485,7 +492,7 @@ export default class SearchNode {
 const pattern = `
 <div class="\${test_field}">
     <span>\${test}</span>
-    <span class="t">\${test2}</span>
+    <span class="t">\${test2[]}</span>
 </div>
 `
 
@@ -495,6 +502,9 @@ const data = `
     <span>test</span>
     <span class="t">
         test2
+    </span>
+    <span class="t">
+        test3
     </span>
 </div>
 </body></html>
