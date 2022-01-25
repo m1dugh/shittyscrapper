@@ -12,7 +12,7 @@ const dataTypes: {[name: string]: NodeDataType} = {
     "repeatable": Repeatable
 }
 
-function buildDataType(types: [string]): NodeDataType {
+function buildDataType(types: string[]): NodeDataType {
     let result: NodeDataType = 0;
     for(let key of types) {
         if(Object.keys(dataTypes).includes(key)) {
@@ -158,7 +158,7 @@ export default class SearchNode {
     /**
      * @private the flag indicating whether sub keys should be considered as part of data or not
      */
-    private isBlock: boolean = false;
+    private dataTypes: NodeDataType = 0;
 
     /**
      * @private if isBlock is true, the parent key to append the children to
@@ -227,7 +227,7 @@ export default class SearchNode {
 
         res &&= this._matchNodeCheckers(element)
 
-        const effectiveIsBlock = this.isBlock && res;
+        const effectiveIsBlock = dataTypeContainsFlag(this.dataTypes, dataTypes.block) && res;
         let effectiveResult: {} = effectiveIsBlock ? {} : result;
 
         if (res && this.children && element.children.length >= this.children.length) {
@@ -434,12 +434,8 @@ export default class SearchNode {
                 if (item) {
 
                     if (item.name === "datatype") {
-                        switch (item.value) {
-                            case "block":
-                                result.isBlock = true;
-                                break;
-                        }
-
+                        const flags = item.value.split(" ")
+                        result.dataTypes = buildDataType(flags)
                     } else if (item.name === "key") {
                         result.key = item.value
                     } else {
@@ -506,7 +502,7 @@ export default class SearchNode {
 
 
 const pattern = `
-<div class="\${test_field}">
+<div class="test" id="\${name}" datatype="block" key="content[]">
     <span>\${test}</span>
     <span class="t">\${test2[]}</span>
 </div>
@@ -523,12 +519,19 @@ const data = `
         test3
     </span>
 </div>
+<div class="test" id="test bis">
+    <span>test</span>
+    <span class="t">
+        test2 bis
+    </span>
+    <span class="t">
+        test3 bis
+    </span>
+</div>
 </body></html>
 `
 const node = SearchNode.BuildSearchNode(pattern)
-if (node.children)
-    console.log(node.children[0].checkers?.text)
-console.log(node.MapData(data))
+console.log(node.MapData(data).content)
 /*
 const pattern = readFileSync("./samples/pattern.html", {encoding: "utf-8"})
 const data = readFileSync("./samples/sample_page.html", {encoding: "utf-8"})
