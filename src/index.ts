@@ -7,6 +7,22 @@ type NodeDataType = number;
 const Block: NodeDataType = 1;
 const Repeatable: NodeDataType = 2*Block;
 
+const dataTypes: {[name: string]: NodeDataType} = {
+    "block": Block,
+    "repeatable": Repeatable
+}
+
+function buildDataType(types: [string]): NodeDataType {
+    let result: NodeDataType = 0;
+    for(let key of types) {
+        if(Object.keys(dataTypes).includes(key)) {
+            result |= dataTypes[key]
+        }
+    }
+
+    return result
+}
+
 function dataTypeContainsFlag(data: NodeDataType, flag: NodeDataType): boolean {
     return (data & flag) !== 0;
 }
