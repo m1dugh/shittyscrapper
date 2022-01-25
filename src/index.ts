@@ -1,21 +1,22 @@
 import {JSDOM} from "jsdom";
+import {readFileSync} from "fs";
 
 global.DOMParser = new JSDOM().window.DOMParser
 
 
 type NodeDataType = number;
 const Block: NodeDataType = 1;
-const Repeatable: NodeDataType = 2*Block;
+const Repeatable: NodeDataType = 2 * Block;
 
-const dataTypes: {[name: string]: NodeDataType} = {
+const dataTypes: { [name: string]: NodeDataType } = {
     "block": Block,
     "repeatable": Repeatable
 }
 
 function buildDataType(types: string[]): NodeDataType {
     let result: NodeDataType = 0;
-    for(let key of types) {
-        if(Object.keys(dataTypes).includes(key)) {
+    for (let key of types) {
+        if (Object.keys(dataTypes).includes(key)) {
             result |= dataTypes[key]
         }
     }
@@ -54,11 +55,11 @@ function isFramerValidator(framer: ResultStringFramer): boolean {
 function isDataValidated(extracted: string | undefined, framer: ResultStringFramer): boolean {
     if (!extracted)
         return false;
+
     const i = framer.name.lastIndexOf("/")
     if (framer.name.length > 0 && i > 0 && framer.name[0] === "/") {
         try {
             const reg = new RegExp(framer.name.slice(1, i), framer.name.slice(i + 1));
-            console.log(extracted, "=>", reg, extracted.match(reg))
             if (extracted.match(reg) == null)
                 return false
         } catch (err) {
@@ -233,16 +234,20 @@ export default class SearchNode {
         if (res && this.children && element.children.length >= this.children.length) {
             let checkedChildren = [];
 
-
+            //let currentCheckedChildren = 0;
             for (let child of element.children) {
                 const htmlElem = child as HTMLElement;
                 if (!htmlElem)
                     continue
 
+
                 for (let currentCheckedChildren = 0; currentCheckedChildren < this.children.length; currentCheckedChildren++) {
 
-                    if (/*(!checkedChildren[currentCheckedChildren] || this.children[currentCheckedChildren].isBlock)
-                        && */this.children[currentCheckedChildren]._getResults(htmlElem, effectiveResult)) {
+                    const child = this.children[currentCheckedChildren]
+                    if ((!checkedChildren[currentCheckedChildren]
+                            || dataTypeContainsFlag(child.dataTypes, dataTypes.block)
+                            || dataTypeContainsFlag(child.dataTypes, dataTypes.repeatable))
+                        && child._getResults(htmlElem, effectiveResult)) {
                         checkedChildren[currentCheckedChildren] = true;
                     }
                 }
@@ -282,6 +287,8 @@ export default class SearchNode {
                 if (elemAttr) {
                     if (!isDataValidated(extractVariables(framer, elemAttr.value), framer))
                         return false;
+                } else {
+                    return false
                 }
             }
         }
@@ -501,10 +508,10 @@ export default class SearchNode {
 }
 
 
-const pattern = `
+/*const pattern = `
 <div class="test" id="\${name}" datatype="block" key="content[]">
     <span>\${test}</span>
-    <span class="t">\${test2[]}</span>
+    <span class="t" datatype="repeatable">\${test2[]}</span>
 </div>
 `
 
@@ -520,7 +527,7 @@ const data = `
     </span>
 </div>
 <div class="test" id="test bis">
-    <span>test</span>
+    <span>test bis</span>
     <span class="t">
         test2 bis
     </span>
@@ -531,20 +538,16 @@ const data = `
 </body></html>
 `
 const node = SearchNode.BuildSearchNode(pattern)
-console.log(node.MapData(data).content)
-/*
+console.log(node.MapData(data).content)*/
+
 const pattern = readFileSync("./samples/pattern.html", {encoding: "utf-8"})
-const data = readFileSync("./samples/sample_page.html", {encoding: "utf-8"})
+const data = readFileSync("./samples/test.html", {encoding: "utf-8"})
 
 const node = SearchNode.BuildSearchNode(pattern)
 
-const sections = node.MapData(data).sections
+const sections = node.MapData(data)
 console.log(sections)
-sections.filter(({marks}: any) => marks != undefined).forEach(({marks, Name}: any) => {
-console.log(`======${Name}======`)
-marks.filter((o: any) => Object.keys(o).length === 3 && o["Mark"] != "&nbsp;").map(({
-                                                                                        Name,
-                                                                                        ...args
-                                                                                    }: { Name: string, Date: string, Mark: string }) => ({Name: Name.replace(/\s/g, '').replace(/\n/g, ' '), ...args})).forEach((v: {}) => console.log(v))
-})
-*/
+
+sections.symbols?.map((v: string) => v.replace(new RegExp(/[^\w\é\è\/\.]/g), ""))
+    .filter((v: string) => !v.includes("nbsp"))
+    .forEach((v: string) => console.log(v))
