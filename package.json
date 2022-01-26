@@ -1,10 +1,11 @@
 {
   "name": "shittyscrapper",
   "version": "1.0.0",
-  "description": "a JS/TS scrapper",
-  "main": "index.js",
+  "description": "a JS/TS text extractor",
+  "main": "./dist/index.js",
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "build && npm run build test",
     "test": "jest"
   },
   "repository": {

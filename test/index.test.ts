@@ -75,7 +75,7 @@ describe(("search node testing"), () => {
         })
     })
 
-    describe("simple type testing", () => {
+    describe("type testing", () => {
         it("should return the person info", () => {
             const pattern = `<div class="people">
 <div>
@@ -87,6 +87,43 @@ describe(("search node testing"), () => {
             const node = SearchNode.BuildSearchNode(pattern);
             const result = node.MapData(data)
             expect(result).toEqual({Name: "John", LastName: "Doe", age: "23"})
+        })
+
+        it("should return a person with its marks", () => {
+            const pattern = `<div class="people">
+<div>
+<span>\${Name}</span>
+<span>\${LastName}</span>
+<span>\${age}</span>
+<div>
+    <span datatype="repeatable">\${Marks[]}</span>
+</div>
+</div>
+</div>`
+            const node = SearchNode.BuildSearchNode(pattern)
+            const result = node.MapData(data)
+            expect(result).toEqual({Name: "John", LastName: "Doe", "age": "23", Marks: ["18", "19"]})
+        })
+
+
+        it("should return list of people", () => {
+
+            const pattern = `<div class="people">
+<div datatype="block" key="people[]">
+<span>\${Name}</span>
+<span>\${LastName}</span>
+<span>\${age}</span>
+<div>
+    <span datatype="repeatable">\${Marks[]}</span>
+</div>
+</div>
+</div>`
+            const node = SearchNode.BuildSearchNode(pattern)
+            const people = node.MapData(data).people
+            expect(people).toEqual([
+                {Name: "John", LastName: "Doe", "age": "23", Marks: ["18", "19"]},
+                {Name: "Peter", LastName: "Parker", "age": "18", Marks: ["20", "19"]}
+            ])
         })
     })
 })
