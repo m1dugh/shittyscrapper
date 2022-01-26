@@ -7,10 +7,12 @@ global.DOMParser = new JSDOM().window.DOMParser
 type NodeDataType = number;
 const Block: NodeDataType = 1;
 const Repeatable: NodeDataType = 2 * Block;
+const Optional: NodeDataType = 2 * Repeatable;
 
 const dataTypes: { [name: string]: NodeDataType } = {
     "block": Block,
-    "repeatable": Repeatable
+    "repeatable": Repeatable,
+    "optional": Optional
 }
 
 function buildDataType(types: string[]): NodeDataType {
@@ -149,12 +151,12 @@ export default class SearchNode {
     /**
      * @private the search results for the actual result
      */
-    public searchResults?: SearchResults;
+    private searchResults?: SearchResults;
 
     /**
      * @private the frame results for text and attributes matching
      */
-    public checkers?: SearchResults;
+    private checkers?: SearchResults;
 
     /**
      * @private the flag indicating whether sub keys should be considered as part of data or not
@@ -251,8 +253,8 @@ export default class SearchNode {
                 }
             }
 
-            for (let value of checkedChildren) {
-                if (value !== true) {
+            for (let i = 0; i < this.children.length; i++) {
+                if (checkedChildren[i] !== true && !dataTypeContainsFlag(this.children[i].dataTypes, dataTypes.optional)) {
                     res = false;
                     break;
                 }
