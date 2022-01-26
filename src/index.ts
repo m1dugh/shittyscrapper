@@ -212,6 +212,7 @@ export default class SearchNode {
 
         // TODO : remove debug codes
 
+        let debug = element.tagName.toLowerCase() === "td" && element.attributes.getNamedItem("colspan")
         let res: boolean = true;
 
         if (this.tag != element.tagName.toLowerCase())
@@ -232,9 +233,8 @@ export default class SearchNode {
         let effectiveResult: {} = effectiveIsBlock ? {} : result;
 
         if (res && this.children && element.children.length >= this.children.length) {
-            let checkedChildren = [];
+            let checkedChildren: boolean[] = [];
 
-            //let currentCheckedChildren = 0;
             for (let child of element.children) {
                 const htmlElem = child as HTMLElement;
                 if (!htmlElem)
@@ -266,10 +266,10 @@ export default class SearchNode {
 
         if (res) {
             const innerText = getInnerText(element)
-            this._getResultsForNode(element, effectiveResult);
+            res &&= this._getResultsForNode(element, effectiveResult);
         }
 
-        if (effectiveIsBlock) {
+        if (res && effectiveIsBlock && Object.keys(effectiveResult).length > 0) {
             AddToMap(result, this.key, effectiveResult)
         }
 
@@ -306,11 +306,12 @@ export default class SearchNode {
      * @param element is an element matching the search node
      * @param result is a dict the variables will be added to
      */
-    private _getResultsForNode(element: HTMLElement, result: any) {
+    private _getResultsForNode(element: HTMLElement, result: any): boolean {
 
         if (!this.searchResults)
-            return;
+            return true
 
+        let res: boolean = false
 
         for (let [attr, framers] of Object.entries(this.searchResults.attributes)) {
             for (let framer of framers) {
@@ -318,19 +319,24 @@ export default class SearchNode {
                 if (elemAttr) {
                     const extracted = extractVariables(framer, elemAttr.value)
                     if (extracted) {
+                        res = true;
                         AddToMap(result, framer.name, extracted)
                     }
                 }
             }
         }
 
+
         for (let framer of this.searchResults.text) {
             const extracted = extractVariables(framer, getInnerText(element))
 
             if (extracted) {
+                res = true
                 AddToMap(result, framer.name, extracted)
             }
         }
+
+        return res
 
     }
 
@@ -508,7 +514,7 @@ export default class SearchNode {
 }
 
 
-/*const pattern = `
+const pattern = `
 <div class="test" id="\${name}" datatype="block" key="content[]">
     <span>\${test}</span>
     <span class="t" datatype="repeatable">\${test2[]}</span>
@@ -538,16 +544,21 @@ const data = `
 </body></html>
 `
 const node = SearchNode.BuildSearchNode(pattern)
-console.log(node.MapData(data).content)*/
+console.log(node.MapData(data).content)
+/*
 
 const pattern = readFileSync("./samples/pattern.html", {encoding: "utf-8"})
-const data = readFileSync("./samples/test.html", {encoding: "utf-8"})
+const data = readFileSync("./samples/sample_page.html", {encoding: "utf-8"})
 
 const node = SearchNode.BuildSearchNode(pattern)
 
-const sections = node.MapData(data)
-console.log(sections)
+const sections = node.MapData(data).sections
+// console.log(sections)
 
-sections.symbols?.map((v: string) => v.replace(new RegExp(/[^\w\é\è\/\.]/g), ""))
+for (let sec of sections.splice(10, 10)) {
+    console.log(sec)
+}
+
+/*sections.symbols?.map((v: string) => v.replace(new RegExp(/[^\w\é\è\/\.]/g), ""))
     .filter((v: string) => !v.includes("nbsp"))
-    .forEach((v: string) => console.log(v))
+    .forEach((v: string) => console.log(v))*/
