@@ -210,12 +210,9 @@ export default class SearchNode {
 
     private _getResults(element: HTMLElement, result: any): boolean {
 
-        // TODO : remove debug codes
-
-        let debug = element.tagName.toLowerCase() === "td" && element.attributes.getNamedItem("colspan")
         let res: boolean = true;
 
-        if (this.tag != element.tagName.toLowerCase())
+        if (this.tag !== element.tagName.toLowerCase())
             res = false;
 
 
@@ -235,7 +232,7 @@ export default class SearchNode {
         if (res && this.children && element.children.length >= this.children.length) {
             let checkedChildren: boolean[] = [];
 
-            for (let child of element.children) {
+            for (const child of element.children) {
                 const htmlElem = child as HTMLElement;
                 if (!htmlElem)
                     continue
@@ -244,11 +241,12 @@ export default class SearchNode {
                 for (let currentCheckedChildren = 0; currentCheckedChildren < this.children.length; currentCheckedChildren++) {
 
                     const child = this.children[currentCheckedChildren]
-                    if ((!checkedChildren[currentCheckedChildren]
+                    if ((checkedChildren[currentCheckedChildren] !== true
                             || dataTypeContainsFlag(child.dataTypes, dataTypes.block)
                             || dataTypeContainsFlag(child.dataTypes, dataTypes.repeatable))
                         && child._getResults(htmlElem, effectiveResult)) {
                         checkedChildren[currentCheckedChildren] = true;
+                        break
                     }
                 }
             }
@@ -512,53 +510,3 @@ export default class SearchNode {
         return result;
     }
 }
-
-
-const pattern = `
-<div class="test" id="\${name}" datatype="block" key="content[]">
-    <span>\${test}</span>
-    <span class="t" datatype="repeatable">\${test2[]}</span>
-</div>
-`
-
-const data = `
-<html><body>
-<div class="test" id="test">
-    <span>test</span>
-    <span class="t">
-        test2
-    </span>
-    <span class="t">
-        test3
-    </span>
-</div>
-<div class="test" id="test bis">
-    <span>test bis</span>
-    <span class="t">
-        test2 bis
-    </span>
-    <span class="t">
-        test3 bis
-    </span>
-</div>
-</body></html>
-`
-const node = SearchNode.BuildSearchNode(pattern)
-console.log(node.MapData(data).content)
-/*
-
-const pattern = readFileSync("./samples/pattern.html", {encoding: "utf-8"})
-const data = readFileSync("./samples/sample_page.html", {encoding: "utf-8"})
-
-const node = SearchNode.BuildSearchNode(pattern)
-
-const sections = node.MapData(data).sections
-// console.log(sections)
-
-for (let sec of sections.splice(10, 10)) {
-    console.log(sec)
-}
-
-/*sections.symbols?.map((v: string) => v.replace(new RegExp(/[^\w\é\è\/\.]/g), ""))
-    .filter((v: string) => !v.includes("nbsp"))
-    .forEach((v: string) => console.log(v))*/
