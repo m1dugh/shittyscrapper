@@ -231,7 +231,8 @@ export default class SearchNode {
         const effectiveIsBlock = dataTypeContainsFlag(this.dataTypes, dataTypes.block) && res;
         let effectiveResult: {} = effectiveIsBlock ? {} : result;
 
-        if (res && this.children && element.children.length >= this.children.length) {
+        const requiredChildrenLength = this.children ? this.children.filter(({dataTypes: type}: SearchNode) => !dataTypeContainsFlag(type, dataTypes.optional)).length : 0;
+        if (res && this.children && element.children.length >= requiredChildrenLength) {
             let checkedChildren: boolean[] = [];
 
             for (const child of element.children) {

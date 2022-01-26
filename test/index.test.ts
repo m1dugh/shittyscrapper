@@ -44,6 +44,10 @@ describe(("search node testing"), () => {
         </div>
     </div>
 </div>
+<div class="data">
+    <span>Data 1</span>
+</div>
+<div class="data">Data 2</div>
 </body></html>
 `
     })
@@ -124,6 +128,24 @@ describe(("search node testing"), () => {
                 {Name: "John", LastName: "Doe", "age": "23", Marks: ["18", "19"]},
                 {Name: "Peter", LastName: "Parker", "age": "18", Marks: ["20", "19"]}
             ])
+        })
+    })
+
+    describe("optional block testing", () => {
+        it("should return true with missing span", () => {
+            const pattern = `<body><div class="test" id="\${test}"><span datatype="optional"></span></div></body>`
+
+            const node = SearchNode.BuildSearchNode(pattern)
+            const result = node.MapData(data)
+            expect(result.test).toBe("test")
+        })
+
+        it("should find Data2 and Data1", () => {
+            const pattern = `<body><div class="data" datatype="repeatable">\${values[]}<span datatype="optional">\${values[]}</span></div></body>`
+
+            const node = SearchNode.BuildSearchNode(pattern)
+            const result = node.MapData(data)
+            expect(result.values).toEqual(["Data 1", "Data 2"])
         })
     })
 })
