@@ -1,6 +1,6 @@
 {
   "name": "shittyscrapper",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "a JS/TS text extractor",
   "main": "./dist/index.js",
   "scripts": {

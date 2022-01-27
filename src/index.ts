@@ -27,7 +27,7 @@ function buildDataType(types: string[]): NodeDataType {
 }
 
 function dataTypeContainsFlag(data: NodeDataType, flag: NodeDataType): boolean {
-    return (data & flag) > 0;
+    return (data & flag) === flag;
 }
 
 interface SearchResults {
