@@ -1,5 +1,4 @@
 import {JSDOM} from "jsdom";
-import {readFileSync} from "fs";
 
 global.DOMParser = new JSDOM().window.DOMParser
 
@@ -267,7 +266,7 @@ export default class SearchNode {
 
         if (res) {
             const innerText = getInnerText(element)
-            res &&= this._getResultsForNode(element, effectiveResult);
+            this._getResultsForNode(element, effectiveResult);
         }
 
         if (res && effectiveIsBlock && Object.keys(effectiveResult).length > 0) {
