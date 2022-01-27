@@ -111,8 +111,10 @@ const result = searchNode.MapData(data)
 
 The `xml`/`html` tags can be given two additional attributes in pattern.
 
-- The `datatype` attribute that can be either `"block"` or `"repeatable"`
-- The `key` attribute that has to be used alongwith `datatype="block"`
+- The `datatype` attribute that can be either `"repeatable"`, `"entity"` or `"block"`
+- The `key` attribute that has to be used alongwith `datatype="entitity"`
+
+> Note: setting `datatype="block"` is equivalent to setting `datatype="entity repeatable"`
 
 ##### The datatype Attribute
 
@@ -245,4 +247,4 @@ for (const parag of result.paragraphs) {
 ### 5. Known Limitations
 
  - The pattern is supposed to be a XML element.
- - It is not yet possible to pick a specific element at 
+ - It is not easy and defeating the purpose of this lib to pick a specific element given its position in the parent
