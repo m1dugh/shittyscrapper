@@ -4,12 +4,13 @@ global.DOMParser = new JSDOM().window.DOMParser
 
 
 type NodeDataType = number;
-const Block: NodeDataType = 1;
-const Repeatable: NodeDataType = 2 * Block;
-const Optional: NodeDataType = 2 * Repeatable;
+const Entity: NodeDataType = 1;
+const Repeatable: NodeDataType = Entity << 1;
+const Optional: NodeDataType = Repeatable << 1;
 
 const dataTypes: { [name: string]: NodeDataType } = {
-    "block": Block,
+    "entity": Entity,
+    "block": Entity | Repeatable,
     "repeatable": Repeatable,
     "optional": Optional
 }
@@ -26,7 +27,7 @@ function buildDataType(types: string[]): NodeDataType {
 }
 
 function dataTypeContainsFlag(data: NodeDataType, flag: NodeDataType): boolean {
-    return (data & flag) !== 0;
+    return (data & flag) > 0;
 }
 
 interface SearchResults {
@@ -228,14 +229,14 @@ export default class SearchNode {
         res &&= this._matchNodeCheckers(element)
 
         const effectiveIsBlock = dataTypeContainsFlag(this.dataTypes, dataTypes.block) && res;
-        let effectiveResult: {} = effectiveIsBlock ? {} : result;
+        const effectiveResult: any = effectiveIsBlock ? {} : result;
 
         const requiredChildrenLength = this.children ? this.children.filter(({dataTypes: type}: SearchNode) => !dataTypeContainsFlag(type, dataTypes.optional)).length : 0;
         if (res && this.children && element.children.length >= requiredChildrenLength) {
             let checkedChildren: boolean[] = [];
 
-            for (const child of element.children) {
-                const htmlElem = child as HTMLElement;
+            for (let c of element.children) {
+                const htmlElem = c as HTMLElement;
                 if (!htmlElem)
                     continue
 
@@ -244,7 +245,6 @@ export default class SearchNode {
 
                     const child = this.children[currentCheckedChildren]
                     if ((checkedChildren[currentCheckedChildren] !== true
-                            || dataTypeContainsFlag(child.dataTypes, dataTypes.block)
                             || dataTypeContainsFlag(child.dataTypes, dataTypes.repeatable))
                         && child._getResults(htmlElem, effectiveResult)) {
                         checkedChildren[currentCheckedChildren] = true;
@@ -517,36 +517,4 @@ export default class SearchNode {
 
         return result;
     }
-}
-
-
-// TODO : remove code
-
-import {readFileSync} from "fs";
-
-
-const data = readFileSync("./samples/sample_page.html", {encoding: "utf-8"})
-const pattern = readFileSync("./samples/pattern.html", {encoding: "utf-8"})
-
-const node = SearchNode.BuildSearchNode(pattern)
-const result = node.MapData(data)
-
-const sections: { Name: string, Mark: string, Marks: { Type: string, Date: string, Note: string }[] | undefined }[] = result.sections.filter(({
-                                                                                                                                                  Name,
-                                                                                                                                                  Mark
-                                                                                                                                              }: { Name: string, Mark: string }) => Name != undefined && Mark != undefined)
-
-for (let {Name, Mark, Marks} of sections) {
-    Name = Name.replace(/\s\s/g, "").replace(/\n/g, "")
-    console.log(Name, "=>", Mark)
-
-    if (Marks) {
-        for (let {Type, Date, Note} of Marks) {
-            if (Type) {
-                Type = Type.replace(/[^\w\d]/g, "")
-            }
-            console.log(`\t${Date}:${Type}\t=>\t${Note}`)
-        }
-    }
-
 }
