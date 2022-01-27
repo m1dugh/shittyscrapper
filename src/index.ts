@@ -265,8 +265,7 @@ export default class SearchNode {
 
 
         if (res) {
-            const innerText = getInnerText(element)
-            this._getResultsForNode(element, effectiveResult);
+            this._getResultsForNode(element, effectiveResult)
         }
 
         if (res && effectiveIsBlock && Object.keys(effectiveResult).length > 0) {
@@ -274,6 +273,13 @@ export default class SearchNode {
         }
 
         return res;
+    }
+
+    private parentHasDataType(type: NodeDataType): boolean {
+        if (dataTypeContainsFlag(this.dataTypes, type)) {
+            return true;
+        }
+        return this.parent ? this.parent.parentHasDataType(type) : false;
     }
 
     private _matchNodeCheckers(element: HTMLElement): boolean {
@@ -511,4 +517,36 @@ export default class SearchNode {
 
         return result;
     }
+}
+
+
+// TODO : remove code
+
+import {readFileSync} from "fs";
+
+
+const data = readFileSync("./samples/sample_page.html", {encoding: "utf-8"})
+const pattern = readFileSync("./samples/pattern.html", {encoding: "utf-8"})
+
+const node = SearchNode.BuildSearchNode(pattern)
+const result = node.MapData(data)
+
+const sections: { Name: string, Mark: string, Marks: { Type: string, Date: string, Note: string }[] | undefined }[] = result.sections.filter(({
+                                                                                                                                                  Name,
+                                                                                                                                                  Mark
+                                                                                                                                              }: { Name: string, Mark: string }) => Name != undefined && Mark != undefined)
+
+for (let {Name, Mark, Marks} of sections) {
+    Name = Name.replace(/\s\s/g, "").replace(/\n/g, "")
+    console.log(Name, "=>", Mark)
+
+    if (Marks) {
+        for (let {Type, Date, Note} of Marks) {
+            if (Type) {
+                Type = Type.replace(/[^\w\d]/g, "")
+            }
+            console.log(`\t${Date}:${Type}\t=>\t${Note}`)
+        }
+    }
+
 }
